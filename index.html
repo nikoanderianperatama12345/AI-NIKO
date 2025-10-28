@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI NIKO</title>
+<style>
+  body {
+    margin: 0;
+    background: #0b0b0b;
+    color: #fff;
+    font-family: "Poppins", sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #121212;
+    padding: 10px 15px;
+    border-bottom: 1px solid #1e1e1e;
+  }
+
+  .menu-icon {
+    font-size: 22px;
+    cursor: pointer;
+  }
+
+  .title {
+    font-weight: 600;
+    font-size: 18px;
+    color: #00bfff;
+  }
+
+  .profile-top {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #00bfff;
+  }
+
+  /* CHAT AREA */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .msg {
+    margin: 12px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .msg.user {
+    flex-direction: row-reverse;
+  }
+
+  .avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .bubble {
+    background: #1a1a1a;
+    padding: 12px 16px;
+    border-radius: 16px;
+    max-width: 75%;
+    font-size: 15px;
+    line-height: 1.5;
+    animation: dropIn 0.25s ease;
+  }
+
+  .msg.user .bubble {
+    background: #0078ff;
+  }
+
+  .bubble img {
+    width: 240px;
+    border-radius: 12px;
+    margin-top: 10px;
+    display: block;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .bubble img:hover {
+    transform: scale(1.02);
+  }
+
+  @keyframes dropIn {
+    from {opacity: 0; transform: translateY(-8px);}
+    to {opacity: 1; transform: translateY(0);}
+  }
+
+  /* FOOTER */
+  footer {
+    background: #121212;
+    border-top: 1px solid #1e1e1e;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+  }
+
+  #plusBtn {
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: 26px;
+    cursor: pointer;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: #1a1a1a;
+    border: none;
+    border-radius: 20px;
+    padding: 12px 15px;
+    color: #fff;
+    outline: none;
+  }
+
+  #sendBtn {
+    background: none;
+    border: none;
+    color: #00bfff;
+    font-size: 22px;
+    cursor: pointer;
+  }
+
+  #preview {
+    position: absolute;
+    left: 50px;
+    bottom: 60px;
+    width: 70px;
+    height: 70px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 2px solid #00bfff;
+    display: none;
+  }
+
+  #imagePopup {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  #imagePopup img {
+    max-width: 90%;
+    max-height: 85%;
+    border-radius: 12px;
+  }
+
+  #downloadBtn {
+    display: block;
+    margin: 12px auto 0;
+    background: #00bfff;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  #downloadBtn:hover {
+    background: #0090cc;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="menu-icon">☰</div>
+  <div class="title">AI NIKO</div>
+  <img src="gg.jpg" alt="User" class="profile-top">
+</header>
+
+<div id="chat"></div>
+
+<footer>
+  <button id="plusBtn">+</button>
+  <input type="file" id="fileInput" accept="image/*" style="display:none">
+  <input type="text" id="input" placeholder="Ketik pesan di sini...">
+  <button id="sendBtn">↑</button>
+  <img id="preview" alt="preview">
+</footer>
+
+<div id="imagePopup">
+  <img id="popupImg" src="">
+</div>
+
+<script>
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const plusBtn = document.getElementById("plusBtn");
+const fileInput = document.getElementById("fileInput");
+const preview = document.getElementById("preview");
+const imagePopup = document.getElementById("imagePopup");
+const popupImg = document.getElementById("popupImg");
+
+let fotoDipilih = null;
+
+// Klik tombol +
+plusBtn.onclick = () => fileInput.click();
+
+// Preview gambar
+fileInput.onchange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    fotoDipilih = file;
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = "block";
+  }
+};
+
+// Tombol kirim
+sendBtn.onclick = () => {
+  const teks = input.value.trim().toLowerCase();
+  if (!teks && !fotoDipilih) return;
+
+  if (teks) tambahPesan("user", teks);
+  input.value = "";
+
+  if (fotoDipilih) {
+    prosesGambar();
+    preview.style.display = "none";
+    fotoDipilih = null;
+  } else {
+    aiBalas(teks);
+  }
+};
+
+// Tambah pesan ke chat
+function tambahPesan(pengirim, teks, gambar = null) {
+  const div = document.createElement("div");
+  div.classList.add("msg", pengirim);
+
+  const avatar = document.createElement("img");
+  avatar.classList.add("avatar");
+  avatar.src = pengirim === "user" ? "user.jpg" : "ai.jpg";
+
+  const bubble = document.createElement("div");
+  bubble.classList.add("bubble");
+  bubble.innerHTML = teks;
+
+  if (gambar) {
+    const img = document.createElement("img");
+    img.src = gambar;
+    img.onclick = () => bukaPopup(gambar);
+
+    const dl = document.createElement("button");
+    dl.id = "downloadBtn";
+    dl.textContent = "⬇ Download Gambar";
+    dl.onclick = () => {
+      const a = document.createElement("a");
+      a.href = gambar;
+      a.download = "AI_NIKO_Result.jpg";
+      a.click();
+    };
+
+    bubble.appendChild(img);
+    bubble.appendChild(dl);
+  }
+
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// Balasan AI
+function aiBalas(teks) {
+  let balasan;
+  
+  if (teks === "halo") {
+    balasan = "Halo… Apa kabar? Bagaimana saya bisa membantu Anda hari ini?";
+  } else {
+    const respon = [
+      "Wah, keren banget idemu!",
+      "Oke noted, aku catat dulu ya ✨",
+      "Hehe, ngerti banget maksud kamu 😎",
+      "Baik, aku bantu proses 💡"
+    ];
+    balasan = respon[Math.floor(Math.random() * respon.length)];
+  }
+
+  setTimeout(() => tambahPesan("ai", balasan), 1000);
+}
+
+// Proses gambar
+function prosesGambar() {
+  const div = document.createElement("div");
+  div.classList.add("msg", "ai");
+
+  const avatar = document.createElement("img");
+  avatar.src = "profil-ai.jpg";
+  avatar.classList.add("avatar");
+
+  const bubble = document.createElement("div");
+  bubble.classList.add("bubble");
+  bubble.innerHTML = `
+    <b>Memproses gambar...</b><br>
+    Banyak pengguna sedang membuat gambar saat ini,<br>
+    mohon tunggu sebentar sementara sistem AI NIKO bekerja.
+  `;
+
+  div.appendChild(avatar);
+  div.appendChild(bubble);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+
+  setTimeout(() => {
+    div.remove();
+    tambahPesan("ai", "✨ Gambar berhasil dibuat oleh AI NIKO:", "ai-result.jpg");
+  }, 4000);
+}
+
+// Popup gambar besar
+function bukaPopup(src) {
+  popupImg.src = src;
+  imagePopup.style.display = "flex";
+}
+
+imagePopup.onclick = () => {
+  imagePopup.style.display = "none";
+};
+</script>
+</body>
+</html>
